@@ -2,10 +2,8 @@
 #include "ui_mainwindow.h"
 
 #include <QFileDialog>
+#include <QtConcurrent>
 #include <QMessageBox>
-#include <QtConcurrent/QtConcurrent>
-#include <QFutureWatcher>
-#include <QTableWidgetItem>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -13,178 +11,141 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    ui->btnStart->setEnabled(false);
-    ui->progressBar->setValue(0);
+    ui->btnStartAnalysis->setEnabled(false);
+    ui->btnSearchString->setEnabled(false);
 
-    connect(ui->btnChoose, &QPushButton::clicked,
-            this, &MainWindow::onChooseFiles);
-
-    connect(ui->btnStart, &QPushButton::clicked,
-            this, &MainWindow::onStartAnalysis);
-
-
-    ui->tableResults->setColumnCount(4);
-    ui->tableResults->setHorizontalHeaderLabels({
-        "Файл", "Всего байт", "Чаще байт", "Частота %"
-    });
+    connect(ui->btnSelectFile, &QPushButton::clicked, this, &MainWindow::onSelectFile);
+    connect(ui->btnStartAnalysis, &QPushButton::clicked, this, &MainWindow::onStartAnalysis);
+    connect(ui->btnSearchString, &QPushButton::clicked, this, &MainWindow::onSearchString);
+    connect(ui->btnClear, &QPushButton::clicked, this, &MainWindow::onClear);
 }
 
 MainWindow::~MainWindow()
 {
-    for (auto *w : m_watchers) {
-        w->waitForFinished();
-        delete w;
-    }
     delete ui;
 }
 
-void MainWindow::onChooseFiles()
+void MainWindow::onSelectFile()
 {
-    QStringList files = QFileDialog::getOpenFileNames(this, "Выберите файлы");
-
-    if (files.isEmpty())
+    QString file = QFileDialog::getOpenFileName(this, "Выберите UTF-8 файл", QString(),
+                                                "Text Files (*.txt);;All Files (*)");
+    if (file.isEmpty())
         return;
 
-    m_files = files;
-    ui->listFiles->clear();
+    m_filePath = file;
+    ui->labelSelectedFile->setText(file);
+    ui->valueFilePath->setText(file);
+    ui->btnStartAnalysis->setEnabled(true);
 
-    for (auto &f : m_files)
-        ui->listFiles->addItem(f);
-
-    ui->btnStart->setEnabled(true);
-    ui->lblStatus->setText("Файлы выбраны");
-    ui->tableResults->setRowCount(0);
-}
-
-FileResult MainWindow::analyzeFile(const QString &path)
-{
-    FileResult result;
-    result.filePath = path;
-    result.counts = QVector<quint64>(256, 0);
-
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return result;
-
-    const qint64 bufSize = 64 * 1024;
-
-    while (!file.atEnd()) {
-        QByteArray data = file.read(bufSize);
-        result.totalBytes += data.size();
-
-        const uchar *p = reinterpret_cast<const uchar*>(data.constData());
-        for (int i = 0; i < data.size(); i++)
-            result.counts[p[i]]++;
-    }
-
-    return result;
+    // Очистка предыдущих результатов
+    ui->valueFileSize->clear();
+    ui->valueCharCount->clear();
+    ui->valueMostChar->clear();
+    ui->valueMostCount->clear();
+    ui->valueFrequency->clear();
+    ui->editSearchString->clear();
+    ui->valueSearchResult->clear();
+    ui->btnSearchString->setEnabled(false);
 }
 
 void MainWindow::onStartAnalysis()
 {
-    if (m_files.isEmpty())
+    if (m_filePath.isEmpty())
         return;
 
-    ui->btnChoose->setEnabled(false);
-    ui->btnStart->setEnabled(false);
+    ui->btnStartAnalysis->setEnabled(false);
+    ui->statusbar->showMessage("Анализ файла...");
 
-    ui->progressBar->setRange(0, m_files.size());
-    ui->progressBar->setValue(0);
-    ui->lblStatus->setText("Анализ...");
+    m_analysis = QSharedPointer<FileAnalysis>::create();
+    m_analysis->filePath = m_filePath;
 
-    ui->tableResults->setRowCount(0);
+    // Запуск анализа в отдельном потоке
+    m_watcher = new QFutureWatcher<void>(this);
+    connect(m_watcher, &QFutureWatcher<void>::finished, this, &MainWindow::onAnalysisFinished);
 
-    m_results.clear();
-
-    // Удаляем старые watcher
-    for (auto *w : m_watchers) {
-        w->waitForFinished();
-        delete w;
-    }
-    m_watchers.clear();
-
-    m_doneCount = 0;
-
-    for (const QString &file : m_files) {
-
-        // Хранилище результата
-        auto resultPtr = QSharedPointer<FileResult>::create();
-        m_results.append(resultPtr);
-
-        // Задача для потока
-        auto task = [=]() {
-            *resultPtr = analyzeFile(file);
-        };
-
-        // Watcher (шаблонный)
-        auto *watcher = new QFutureWatcher<void>(this);
-        m_watchers.append(watcher);
-
-        connect(watcher, &QFutureWatcher<void>::finished,
-                this, &MainWindow::onSingleFileDone);
-
-        watcher->setFuture(QtConcurrent::run(task));
-    }
+    m_watcher->setFuture(QtConcurrent::run([this]() { analyzeFile(); }));
 }
 
-void MainWindow::onSingleFileDone()
+void MainWindow::analyzeFile()
 {
-    QObject *obj = sender();
-    int index = -1;
-    for (int i = 0; i < m_watchers.size(); ++i) {
-        if (m_watchers[i] == obj) {
-            index = i;
-            break;
+    QFile file(m_filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+
+    QTextStream in(&file);
+
+
+    QMap<QChar, quint64> counts;
+    quint64 totalChars = 0;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        for (QChar ch : line) {
+            counts[ch]++;
+            totalChars++;
         }
     }
 
-    if (index < 0)
-        return;
+    m_analysis->totalChars = totalChars;
+    m_analysis->totalBytes = file.size();
+    m_analysis->counts = counts;
 
-    auto res = m_results[index];
 
-    int row = ui->tableResults->rowCount();
-    ui->tableResults->insertRow(row);
-
-    ui->tableResults->setItem(row, 0, new QTableWidgetItem(res->filePath));
-    ui->tableResults->setItem(row, 1,
-                              new QTableWidgetItem(QString::number(res->totalBytes)));
-
+    QChar most;
     quint64 maxCount = 0;
-    int maxByte = -1;
-
-    for (int b = 0; b < 256; ++b) {
-        if (res->counts[b] > maxCount) {
-            maxCount = res->counts[b];
-            maxByte = b;
+    for (auto it = counts.begin(); it != counts.end(); ++it) {
+        if (it.value() > maxCount) {
+            most = it.key();
+            maxCount = it.value();
         }
     }
-
-    if (maxByte >= 0) {
-        double pct = res->totalBytes ? (100.0 * maxCount / res->totalBytes) : 0;
-
-        ui->tableResults->setItem(row, 2,
-                                  new QTableWidgetItem(QString("0x%1")
-                                                           .arg(maxByte, 2, 16, QChar('0'))));
-
-        ui->tableResults->setItem(row, 3,
-                                  new QTableWidgetItem(QString::number(pct, 'f', 3)));
-    }
-
-    m_doneCount++;
-    ui->progressBar->setValue(m_doneCount);
-
-    if (m_doneCount == m_files.size())
-        onAllDone();
+    m_analysis->mostChar = most;
+    m_analysis->mostCount = maxCount;
+    m_analysis->mostFreq = totalChars ? (100.0 * maxCount / totalChars) : 0.0;
 }
 
-void MainWindow::onAllDone()
+
+void MainWindow::onAnalysisFinished()
 {
-    ui->btnChoose->setEnabled(true);
-    ui->btnStart->setEnabled(true);
+    ui->valueFileSize->setText(QString::number(m_analysis->totalBytes));
+    ui->valueCharCount->setText(QString::number(m_analysis->totalChars));
+    ui->valueMostChar->setText(m_analysis->mostChar);
+    ui->valueMostCount->setText(QString::number(m_analysis->mostCount));
+    ui->valueFrequency->setText(QString::number(m_analysis->mostFreq, 'f', 2) + "%");
 
-    ui->lblStatus->setText("Готово!");
+    ui->btnSearchString->setEnabled(true);
+    ui->btnStartAnalysis->setEnabled(true);
+    ui->statusbar->showMessage("Анализ завершен", 5000);
+}
 
-    QMessageBox::information(this,
-                             "Анализ завершён", "Все файлы обработаны.");
+void MainWindow::onSearchString()
+{
+    if (!m_analysis || ui->editSearchString->text().isEmpty())
+        return;
+
+    QString search = ui->editSearchString->text();
+    quint64 count = 0;
+    for (auto it = m_analysis->counts.begin(); it != m_analysis->counts.end(); ++it) {
+        if (QString(it.key()) == search)
+            count = it.value();
+    }
+    ui->valueSearchResult->setText(QString::number(count));
+}
+
+void MainWindow::onClear()
+{
+    ui->labelSelectedFile->setText("Файл: (не выбран)");
+    ui->valueFilePath->clear();
+    ui->valueFileSize->clear();
+    ui->valueCharCount->clear();
+    ui->valueMostChar->clear();
+    ui->valueMostCount->clear();
+    ui->valueFrequency->clear();
+    ui->editSearchString->clear();
+    ui->valueSearchResult->clear();
+    ui->btnStartAnalysis->setEnabled(false);
+    ui->btnSearchString->setEnabled(false);
+    m_filePath.clear();
+    m_analysis.clear();
+    ui->statusbar->clearMessage();
 }

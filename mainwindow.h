@@ -1,20 +1,24 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QMainWindow>
+#include <QFile>
+#include <QTextStream>
 #include <QVector>
 #include <QSharedPointer>
 #include <QFutureWatcher>
-#include <QStringList>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-struct FileResult {
+struct FileAnalysis {
     QString filePath;
-    QVector<quint64> counts;
     quint64 totalBytes = 0;
+    quint64 totalChars = 0;
+    QMap<QChar, quint64> counts;
+    QChar mostChar;
+    quint64 mostCount = 0;
+    double mostFreq = 0.0;
 };
 
 class MainWindow : public QMainWindow
@@ -26,24 +30,18 @@ public:
     ~MainWindow();
 
 private slots:
-    void onChooseFiles();
+    void onSelectFile();
     void onStartAnalysis();
-    void onSingleFileDone();
-    void onAllDone();
+    void onSearchString();
+    void onClear();
 
-private:
-    FileResult analyzeFile(const QString &path);
+    void onAnalysisFinished();
 
 private:
     Ui::MainWindow *ui;
+    QString m_filePath;
+    QSharedPointer<FileAnalysis> m_analysis;
+    QFutureWatcher<void> *m_watcher = nullptr;
 
-    QStringList m_files;
-    QList<QSharedPointer<FileResult>> m_results;
-
-
-    QList<QFutureWatcher<void>*> m_watchers;
-
-    int m_doneCount = 0;
+    void analyzeFile();
 };
-
-#endif // MAINWINDOW_H
