@@ -4,6 +4,7 @@
 #include <QFileDialog>
 #include <QtConcurrent>
 #include <QMessageBox>
+#include <QStringConverter>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -27,7 +28,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::onSelectFile()
 {
-    QString file = QFileDialog::getOpenFileName(this, "Выберите UTF-8 файл", QString(),
+    QString file = QFileDialog::getOpenFileName(this, "Выберите файл", QString(),
                                                 "Text Files (*.txt);;All Files (*)");
     if (file.isEmpty())
         return;
@@ -69,11 +70,11 @@ void MainWindow::onStartAnalysis()
 void MainWindow::analyzeFile()
 {
     QFile file(m_filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    if (!file.open(QIODevice::ReadOnly))
         return;
 
     QTextStream in(&file);
-
+    in.setEncoding(QStringConverter::Utf8); // Qt 6 способ указать UTF-8
 
     QMap<QChar, quint64> counts;
     quint64 totalChars = 0;
@@ -81,15 +82,17 @@ void MainWindow::analyzeFile()
     while (!in.atEnd()) {
         QString line = in.readLine();
         for (QChar ch : line) {
-            counts[ch]++;
-            totalChars++;
+            // Только печатные символы, без пробелов
+            if (ch.isPrint() && !ch.isSpace()) {
+                counts[ch]++;
+                totalChars++;
+            }
         }
     }
 
     m_analysis->totalChars = totalChars;
     m_analysis->totalBytes = file.size();
     m_analysis->counts = counts;
-
 
     QChar most;
     quint64 maxCount = 0;
@@ -103,7 +106,6 @@ void MainWindow::analyzeFile()
     m_analysis->mostCount = maxCount;
     m_analysis->mostFreq = totalChars ? (100.0 * maxCount / totalChars) : 0.0;
 }
-
 
 void MainWindow::onAnalysisFinished()
 {
@@ -123,13 +125,19 @@ void MainWindow::onSearchString()
     if (!m_analysis || ui->editSearchString->text().isEmpty())
         return;
 
-    QString search = ui->editSearchString->text();
-    quint64 count = 0;
-    for (auto it = m_analysis->counts.begin(); it != m_analysis->counts.end(); ++it) {
-        if (QString(it.key()) == search)
-            count = it.value();
+    QString searchStr = ui->editSearchString->text().trimmed();
+    if (searchStr.length() != 1) {
+        QMessageBox::warning(this, "Ошибка", "Можно вводить только один символ для поиска");
+        return;
     }
-    ui->valueSearchResult->setText(QString::number(count));
+
+    QChar search = searchStr[0];
+    quint64 count = m_analysis->counts.value(search, 0);
+    double freq = m_analysis->totalChars ? (100.0 * count / m_analysis->totalChars) : 0.0;
+
+    ui->valueSearchResult->setText(QString("%1 (частота: %2%)")
+                                       .arg(count)
+                                       .arg(freq, 0, 'f', 2));
 }
 
 void MainWindow::onClear()
