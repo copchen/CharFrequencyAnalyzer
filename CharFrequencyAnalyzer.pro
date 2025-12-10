@@ -1,14 +1,22 @@
 QT += core gui widgets concurrent
+QT += xml
+
+
 
 
 CONFIG += c++17
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    docxanalyzer.cpp \
+
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    docxanalyzer.h \
+    analysisdata.h \
+
 
 FORMS += \
     mainwindow.ui
