@@ -87,9 +87,11 @@ void MainWindow::analyzeFile()
 
     QMap<QChar, quint64> counts;
     quint64 totalChars = 0;
+    QString fullText; // полный текст для поиска подстрок
 
     while (!in.atEnd()) {
         QString line = in.readLine();
+        fullText += line + "\n"; // сохраняем весь текст
         for (QChar ch : line) {
             if (ch.isPrint() && !ch.isSpace()) {
                 counts[ch]++;
@@ -103,7 +105,9 @@ void MainWindow::analyzeFile()
     m_analysis->counts = counts;
     m_analysis->totalChars = totalChars;
     m_analysis->totalBytes = QFileInfo(m_filePath).size();
+    m_analysis->fullText = fullText;
 
+    // Наиболее частый символ
     QChar mostChar;
     quint64 mostCount = 0;
     for (auto it = counts.begin(); it != counts.end(); ++it) {
@@ -137,17 +141,23 @@ void MainWindow::onSearchString()
         return;
 
     QString searchStr = ui->editSearchString->text().trimmed();
-    if (searchStr.length() != 1) {
-        QMessageBox::warning(this, "Ошибка", "Можно вводить только один символ для поиска");
+    if (searchStr.isEmpty()) {
+        QMessageBox::warning(this, "Ошибка", "Введите символ или подстроку для поиска");
         return;
     }
 
-    QChar search = searchStr[0];
-    quint64 count = m_analysis->counts.value(search, 0);
-    double freq = m_analysis->totalChars ? (100.0 * count / m_analysis->totalChars) : 0.0;
+    // Подсчет вхождений подстроки
+    int occurrences = 0;
+    int index = 0;
+    while ((index = m_analysis->fullText.indexOf(searchStr, index, Qt::CaseSensitive)) != -1) {
+        occurrences++;
+        index += searchStr.length();
+    }
 
-    ui->valueSearchResult->setText(QString("%1 (частота: %2%)")
-                                       .arg(count)
+    double freq = m_analysis->totalChars ? (100.0 * occurrences * searchStr.length() / m_analysis->totalChars) : 0.0;
+
+    ui->valueSearchResult->setText(QString("%1 вхождений (частота: %2%)")
+                                       .arg(occurrences)
                                        .arg(freq, 0, 'f', 2));
 }
 

@@ -19,6 +19,8 @@ struct FileAnalysis {
     QChar mostChar;
     quint64 mostCount = 0;
     double mostFreq = 0.0;
+
+    QString fullText; // <- добавляем для поиска подстрок
 };
 
 class MainWindow : public QMainWindow
