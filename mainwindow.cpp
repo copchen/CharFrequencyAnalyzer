@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "FullStatsDialog.h"
 
 #include <QFileDialog>
 #include <QtConcurrent>
@@ -14,11 +15,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->btnStartAnalysis->setEnabled(false);
     ui->btnSearchString->setEnabled(false);
+    ui->btnFullStats->setEnabled(false);
 
     connect(ui->btnSelectFile, &QPushButton::clicked, this, &MainWindow::onSelectFile);
     connect(ui->btnStartAnalysis, &QPushButton::clicked, this, &MainWindow::onStartAnalysis);
     connect(ui->btnSearchString, &QPushButton::clicked, this, &MainWindow::onSearchString);
     connect(ui->btnClear, &QPushButton::clicked, this, &MainWindow::onClear);
+    connect(ui->btnFullStats, &QPushButton::clicked, this, &MainWindow::onShowFullStats);
+
 }
 
 MainWindow::~MainWindow()
@@ -50,6 +54,7 @@ void MainWindow::onSelectFile()
     ui->editSearchString->clear();
     ui->valueSearchResult->clear();
     ui->btnSearchString->setEnabled(false);
+    ui->btnFullStats->setEnabled(false);
 }
 
 void MainWindow::onStartAnalysis()
@@ -87,11 +92,11 @@ void MainWindow::analyzeFile()
 
     QMap<QChar, quint64> counts;
     quint64 totalChars = 0;
-    QString fullText; // полный текст для поиска подстрок
+    QString fullText;
 
     while (!in.atEnd()) {
         QString line = in.readLine();
-        fullText += line + "\n"; // сохраняем весь текст
+        fullText += line + "\n";
         for (QChar ch : line) {
             if (ch.isPrint() && !ch.isSpace()) {
                 counts[ch]++;
@@ -107,7 +112,7 @@ void MainWindow::analyzeFile()
     m_analysis->totalBytes = QFileInfo(m_filePath).size();
     m_analysis->fullText = fullText;
 
-    // Наиболее частый символ
+
     QChar mostChar;
     quint64 mostCount = 0;
     for (auto it = counts.begin(); it != counts.end(); ++it) {
@@ -132,7 +137,18 @@ void MainWindow::onAnalysisFinished()
 
     ui->btnSearchString->setEnabled(true);
     ui->btnStartAnalysis->setEnabled(true);
+    ui->btnFullStats->setEnabled(true);
     ui->statusbar->showMessage("Анализ завершен", 5000);
+}
+
+void MainWindow::onShowFullStats()
+{
+    if (!m_analysis)
+        return;
+
+    FullStatsDialog dlg(this);
+    dlg.setData(m_analysis->counts, m_analysis->totalChars);
+    dlg.exec();
 }
 
 void MainWindow::onSearchString()
@@ -146,7 +162,7 @@ void MainWindow::onSearchString()
         return;
     }
 
-    // Подсчет вхождений подстроки
+
     int occurrences = 0;
     int index = 0;
     while ((index = m_analysis->fullText.indexOf(searchStr, index, Qt::CaseSensitive)) != -1) {
@@ -156,7 +172,7 @@ void MainWindow::onSearchString()
 
     double freq = m_analysis->totalChars ? (100.0 * occurrences * searchStr.length() / m_analysis->totalChars) : 0.0;
 
-    ui->valueSearchResult->setText(QString("%1 вхождений (частота: %2%)")
+    ui->valueSearchResult->setText(QString("%1 вхождений (занимает %2% от всех символов)")
                                        .arg(occurrences)
                                        .arg(freq, 0, 'f', 2));
 }
@@ -174,6 +190,7 @@ void MainWindow::onClear()
     ui->valueSearchResult->clear();
     ui->btnStartAnalysis->setEnabled(false);
     ui->btnSearchString->setEnabled(false);
+    ui->btnFullStats->setEnabled(false);
     m_filePath.clear();
     m_analysis.clear();
     ui->statusbar->clearMessage();

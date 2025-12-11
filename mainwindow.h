@@ -6,6 +6,7 @@
 #include <QVector>
 #include <QSharedPointer>
 #include <QFutureWatcher>
+#include <QPushButton>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -20,7 +21,7 @@ struct FileAnalysis {
     quint64 mostCount = 0;
     double mostFreq = 0.0;
 
-    QString fullText; // <- добавляем для поиска подстрок
+    QString fullText;
 };
 
 class MainWindow : public QMainWindow
@@ -36,14 +37,15 @@ private slots:
     void onStartAnalysis();
     void onSearchString();
     void onClear();
-
     void onAnalysisFinished();
+    void onShowFullStats();
 
 private:
     Ui::MainWindow *ui;
     QString m_filePath;
     QSharedPointer<FileAnalysis> m_analysis;
     QFutureWatcher<void> *m_watcher = nullptr;
+    QPushButton *btnFullStats = nullptr;
 
     void analyzeFile();
 };

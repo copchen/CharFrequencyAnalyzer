@@ -49,6 +49,7 @@ public:
     QLabel *valueMostCount;
     QLabel *labelFrequency;
     QLabel *valueFrequency;
+    QPushButton *btnFullStats;
     QGroupBox *groupSearch;
     QFormLayout *formSearch;
     QLabel *labelSearch;
@@ -157,6 +158,11 @@ public:
 
         formAnalysis->setWidget(2, QFormLayout::ItemRole::FieldRole, valueFrequency);
 
+        btnFullStats = new QPushButton(groupAnalysis);
+        btnFullStats->setObjectName("btnFullStats");
+
+        formAnalysis->setWidget(3, QFormLayout::ItemRole::LabelRole, btnFullStats);
+
 
         verticalLayout->addWidget(groupAnalysis);
 
@@ -210,6 +216,7 @@ public:
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName("menubar");
+        menubar->setGeometry(QRect(0, 0, 640, 25));
         MainWindow->setMenuBar(menubar);
         statusbar = new QStatusBar(MainWindow);
         statusbar->setObjectName("statusbar");
@@ -233,6 +240,7 @@ public:
         labelMostChar->setText(QCoreApplication::translate("MainWindow", "\320\241\320\260\320\274\321\213\320\271 \321\207\320\260\321\201\321\202\321\213\320\271 \321\201\320\270\320\274\320\262\320\276\320\273:", nullptr));
         labelMostCount->setText(QCoreApplication::translate("MainWindow", "\320\232\320\276\320\273\320\270\321\207\320\265\321\201\321\202\320\262\320\276:", nullptr));
         labelFrequency->setText(QCoreApplication::translate("MainWindow", "\320\247\320\260\321\201\321\202\320\276\321\202\320\260 (%):", nullptr));
+        btnFullStats->setText(QCoreApplication::translate("MainWindow", "\320\237\320\276\320\273\320\275\320\260\321\217 \321\201\321\202\320\260\321\202\320\270\321\201\321\202\320\270\320\272\320\260", nullptr));
         groupSearch->setTitle(QCoreApplication::translate("MainWindow", "\320\237\320\276\320\270\321\201\320\272 \320\277\320\276\320\264\321\201\321\202\321\200\320\276\320\272\320\270", nullptr));
         labelSearch->setText(QCoreApplication::translate("MainWindow", "\320\222\320\262\320\265\320\264\320\270\321\202\320\265 \320\277\320\276\320\264\321\201\321\202\321\200\320\276\320\272\321\203:", nullptr));
         labelSearchResult->setText(QCoreApplication::translate("MainWindow", "\320\222\321\205\320\276\320\266\320\264\320\265\320\275\320\270\320\271:", nullptr));

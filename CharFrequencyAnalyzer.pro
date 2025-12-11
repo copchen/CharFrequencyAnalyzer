@@ -1,24 +1,22 @@
 QT += core gui widgets concurrent
 QT += xml
 
-
-
-
 CONFIG += c++17
 
 SOURCES += \
+    fullstatsdialog.cpp \
     main.cpp \
     mainwindow.cpp \
-    docxanalyzer.cpp \
 
 
 HEADERS += \
+    fullstatsdialog.h \
     mainwindow.h \
-    docxanalyzer.h \
     analysisdata.h \
 
 
 FORMS += \
+    FullStatsDialog.ui \
     mainwindow.ui
 
 # Default rules for deployment.
