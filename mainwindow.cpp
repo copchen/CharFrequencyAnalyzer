@@ -1,7 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "docxanalyzer.h"
-
 
 #include <QFileDialog>
 #include <QtConcurrent>
@@ -30,8 +28,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::onSelectFile()
 {
-    QString file = QFileDialog::getOpenFileName(this, "Выберите файл", QString(),
-                                                "Text Files (*.txt);;Word Documents (*.docx)");
+    QString file = QFileDialog::getOpenFileName(
+        this,
+        "Выберите файл",
+        QString(),
+        "Text Files (*.txt *.log *.cpp *.cs *.py)"
+        );
     if (file.isEmpty())
         return;
 
@@ -39,7 +41,6 @@ void MainWindow::onSelectFile()
     ui->labelSelectedFile->setText(file);
     ui->valueFilePath->setText(file);
     ui->btnStartAnalysis->setEnabled(true);
-
 
     ui->valueFileSize->clear();
     ui->valueCharCount->clear();
@@ -62,7 +63,6 @@ void MainWindow::onStartAnalysis()
     m_analysis = QSharedPointer<FileAnalysis>::create();
     m_analysis->filePath = m_filePath;
 
-
     m_watcher = new QFutureWatcher<void>(this);
     connect(m_watcher, &QFutureWatcher<void>::finished, this, &MainWindow::onAnalysisFinished);
 
@@ -76,47 +76,29 @@ void MainWindow::analyzeFile()
         return;
     }
 
-    QString ext = QFileInfo(m_filePath).suffix().toLower();
-    QMap<QChar, quint64> counts;
-    quint64 totalChars = 0;
-    QString fullText;
-
-    if (ext == "txt") {
-        QFile file(m_filePath);
-        if (!file.open(QIODevice::ReadOnly))
-            return;
-
-        QTextStream in(&file);
-        in.setEncoding(QStringConverter::Utf8);
-
-        while (!in.atEnd()) {
-            QString line = in.readLine();
-            for (QChar ch : line) {
-                if (ch.isPrint() && !ch.isSpace()) {
-                    counts[ch]++;
-                    totalChars++;
-                }
-            }
-            fullText += line;
-        }
-        file.close();
-    }
-    else if (ext == "docx") {
-        counts = DocxAnalyzer::analyzeDocx(m_filePath);
-        fullText = DocxAnalyzer::extractFullText(m_filePath);
-
-        for (auto it = counts.begin(); it != counts.end(); ++it)
-            totalChars += it.value();
-
-        if (counts.isEmpty()) {
-            QMessageBox::warning(this, "Ошибка", "Не удалось извлечь текст из DOCX.");
-            return;
-        }
-    }
-    else {
-        QMessageBox::warning(this, "Формат не поддерживается", "Поддерживаются только .txt и .docx");
+    QFile file(m_filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Ошибка", "Не удалось открыть файл");
         return;
     }
+
+    QTextStream in(&file);
+    in.setEncoding(QStringConverter::Utf8);
+
+    QMap<QChar, quint64> counts;
+    quint64 totalChars = 0;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        for (QChar ch : line) {
+            if (ch.isPrint() && !ch.isSpace()) {
+                counts[ch]++;
+                totalChars++;
+            }
+        }
+    }
+
+    file.close();
 
     m_analysis->counts = counts;
     m_analysis->totalChars = totalChars;

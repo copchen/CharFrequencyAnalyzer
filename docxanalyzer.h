@@ -1,18 +1,16 @@
-#ifndef DOCXANALYZER_H
-#define DOCXANALYZER_H
+#pragma once
 
 #include <QString>
 #include <QMap>
 #include <QChar>
+#include <QtGlobal>
 
 class DocxAnalyzer
 {
 public:
+    // Анализирует DOCX и возвращает частоту каждого символа (без пробелов)
+    static QMap<QChar, quint64> analyzeDocx(const QString &filePath);
 
-    static QMap<QChar, quint64> analyzeDocx(const QString &path);
-
-
-    static QString extractFullText(const QString &path);
+    // Возвращает полный текст DOCX (для поиска подстрок)
+    static QString extractFullText(const QString &filePath);
 };
-
-#endif // DOCXANALYZER_H
