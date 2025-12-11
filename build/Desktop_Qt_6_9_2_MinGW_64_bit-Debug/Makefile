@@ -310,7 +310,6 @@ Makefile: ../../CharFrequencyAnalyzer.pro ../../../../Qt/6.9.2/mingw_64/mkspecs/
 		../../../../Qt/6.9.2/mingw_64/lib/Qt6Widgets.prl \
 		../../../../Qt/6.9.2/mingw_64/lib/Qt6Gui.prl \
 		../../../../Qt/6.9.2/mingw_64/lib/Qt6Concurrent.prl \
-		../../../../Qt/6.9.2/mingw_64/lib/Qt6Xml.prl \
 		../../../../Qt/6.9.2/mingw_64/lib/Qt6Core.prl \
 		../../../../Qt/6.9.2/mingw_64/lib/Qt6EntryPoint.prl \
 		../../../../Qt/6.9.2/mingw_64/mkspecs/features/build_pass.prf
@@ -555,7 +554,6 @@ Makefile: ../../CharFrequencyAnalyzer.pro ../../../../Qt/6.9.2/mingw_64/mkspecs/
 ../../../../Qt/6.9.2/mingw_64/lib/Qt6Widgets.prl:
 ../../../../Qt/6.9.2/mingw_64/lib/Qt6Gui.prl:
 ../../../../Qt/6.9.2/mingw_64/lib/Qt6Concurrent.prl:
-../../../../Qt/6.9.2/mingw_64/lib/Qt6Xml.prl:
 ../../../../Qt/6.9.2/mingw_64/lib/Qt6Core.prl:
 ../../../../Qt/6.9.2/mingw_64/lib/Qt6EntryPoint.prl:
 ../../../../Qt/6.9.2/mingw_64/mkspecs/features/build_pass.prf:

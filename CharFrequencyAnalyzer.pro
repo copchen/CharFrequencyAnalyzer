@@ -1,23 +1,21 @@
 QT += core gui widgets concurrent
-QT += xml
+
 
 CONFIG += c++17
 
 SOURCES += \
-    fullstatsdialog.cpp \
     main.cpp \
     mainwindow.cpp \
+    fullstatsdialog.cpp
 
 
 HEADERS += \
-    fullstatsdialog.h \
     mainwindow.h \
-    analysisdata.h \
-
+    fullstatsdialog.h
 
 FORMS += \
-    FullStatsDialog.ui \
-    mainwindow.ui
+    mainwindow.ui \
+    FullStatsDialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
